@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MainGrid from "../src/components/MainGrid";
 import Box from "../src/components/Box";
 import { ProfileRelationsBoxWrapper } from "../src/components/ProfileRelations";
@@ -31,29 +31,87 @@ function ProfileSideBar(props) {
   );
 }
 
+function ProfileRelationsBox({ title, items }) {
+  return (
+    <ProfileRelationsBoxWrapper>
+      <h2 className="smallTitle">
+        {title} ({items.length})
+      </h2>
+      {/* <ul>
+        {items.map((item) => (
+          <li key={item}>
+            <a href={`/users/${item}`}>
+              <img src={`https://github.com/${item}.png`} alt={item} />
+              <span>{item}</span>
+            </a>
+          </li>
+        ))}
+      </ul> */}
+    </ProfileRelationsBoxWrapper>
+  );
+}
+
 export default function Home() {
   const githubUser = "BernardoHaab";
-  const [myCommunities, setMyCommunities] = useState([
-    {
-      id: "32423423",
-      title: "Eu odeio acordar cedo",
-      image: "http://alurakut.vercel.app/capa-comunidade-01.jpg",
-    },
-  ]);
+  const [myCommunities, setMyCommunities] = useState([]);
   const friends = ["juunegreiros", "omariosouto", "peas", "rafaballerini"];
+  const [followers, setFollowers] = useState([]);
 
   function handleCreateComunity(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
 
-    const newComunity = {
-      id: new Date().toISOString,
+    const newCommunity = {
       title: formData.get("title"),
-      image: formData.get("image"),
+      imageUrl: formData.get("imageUrl"),
+      creatorSlug: githubUser,
     };
 
-    setMyCommunities([...myCommunities, newComunity]);
+    fetch("/api/communities", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newCommunity),
+    }).then(async (res) => {
+      const data = await res.json();
+      console.log(data);
+      setMyCommunities([...myCommunities, data.record]);
+    });
   }
+
+  useEffect(() => {
+    fetch(`https://api.github.com/users/${githubUser}/followers`)
+      .then((res) => {
+        return res.json();
+      })
+      .then((res) => {
+        setFollowers(res);
+      });
+
+    fetch("https://graphql.datocms.com/", {
+      method: "POST",
+      headers: {
+        Authorization: "58a492490fea3397e2e726beadad33",
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        query: ` query {
+        allCommunities {
+          id
+          title
+          imageUrl
+          creatorSlug
+        }
+      }`,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        setMyCommunities(res.data.allCommunities);
+      });
+  }, []);
 
   return (
     <>
@@ -91,7 +149,7 @@ export default function Home() {
                 <input
                   type="text"
                   placeholder="Coloque uma URL para usarmos de capa"
-                  name="image"
+                  name="imageUrl"
                   aria-label="Coloque uma URL para usarmos de capa"
                 />
               </div>
@@ -105,6 +163,8 @@ export default function Home() {
           className="profileRelationsArea"
           style={{ gridArea: "profileRelationsArea" }}
         >
+          <ProfileRelationsBox title="Seguidores" items={followers} />
+
           <ProfileRelationsBoxWrapper>
             <h2 className="smallTitle">
               Minhas comunidades ({myCommunities.length})
@@ -112,8 +172,8 @@ export default function Home() {
             <ul>
               {myCommunities.map((community) => (
                 <li key={community.id}>
-                  <a href={`/users/${community.title}`}>
-                    <img src={community.image} alt={community.title} />
+                  <a href={`/users/${community.id}`}>
+                    <img src={community.imageUrl} alt={community.title} />
                     <span>{community.title}</span>
                   </a>
                 </li>
