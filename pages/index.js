@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import nookies from "nookies";
+import jwt from "jsonwebtoken";
+
 import MainGrid from "../src/components/MainGrid";
 import Box from "../src/components/Box";
 import { ProfileRelationsBoxWrapper } from "../src/components/ProfileRelations";
@@ -51,8 +54,8 @@ function ProfileRelationsBox({ title, items }) {
   );
 }
 
-export default function Home() {
-  const githubUser = "BernardoHaab";
+export default function Home(props) {
+  const githubUser = props.githubUser;
   const [myCommunities, setMyCommunities] = useState([]);
   const friends = ["juunegreiros", "omariosouto", "peas", "rafaballerini"];
   const [followers, setFollowers] = useState([]);
@@ -201,4 +204,26 @@ export default function Home() {
       </MainGrid>
     </>
   );
+}
+
+export async function getServerSideProps(context) {
+  const token = nookies.get(context).USER_TOKEN;
+  const githubUser = jwt.decode(token)?.githubUser;
+
+  console.log(githubUser);
+
+  if (!githubUser) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  return {
+    props: {
+      githubUser,
+    },
+  };
 }
